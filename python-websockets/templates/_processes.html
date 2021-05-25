@@ -1,6 +1,9 @@
 <p>
     Server time: {{ server_time }}
 </p>
+<p>
+    Refresh time: {{ refresh_time }} second(s)
+</p>
 
 <table>
     <thead>
@@ -15,9 +18,9 @@
         {% for p in processes %}
             <tr>
                 <td>{{ p.pid }}</td>
-                <td>{{ p.name() }}</td>
-                <td>{{ p.status() }}</td>
-                <td>{{ p.cpu_percent() }}</td>
+                <td>{{ p.name }}</td>
+                <td>{{ p.status }}</td>
+                <td>{{ p.cpu_percent }}</td>
             </tr>
         {% endfor %}
     </tbody>

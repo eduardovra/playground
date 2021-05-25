@@ -2,45 +2,44 @@
 <html>
     <head>
         <title>Top</title>
+
         <script type="module">
-            //import hotwiredTurbo from 'https://cdn.skypack.dev/@hotwired/turbo';
             import { connectStreamSource } from 'https://cdn.skypack.dev/@hotwired/turbo';
-            var ws = new WebSocket("ws://localhost:8000/ws");
+            const ws = new WebSocket("ws://localhost:8000/ws");
             connectStreamSource(ws);
+
+            const form = document.getElementById("form");
+            form.onchange = function sendMessage(event) {
+                const formData = new FormData(form)
+                const json = JSON.stringify(Object.fromEntries(formData))
+                ws.send(json)
+                event.preventDefault()
+            }
         </script>
     </head>
     <body>
         <h1>WebSocket Top</h1>
-        <!--
-        <form action="" onsubmit="sendMessage(event)">
-            <input type="text" id="messageText" autocomplete="off"/>
-            <button>Send</button>
+
+        <form id="form">
+            <label for="sort">Sort by</label>
+            <select name="sort">
+                <option value="pid" selected>PID</option>
+                <option value="name">Name</option>
+                <option value="status">Status</option>
+                <option value="cpu_percent">CPU %</option>
+            </select>
+
+            <input type="radio" name="order" value="asc" checked />
+            <label for="asc">Ascending</label>
+            <input type="radio" name="order" value="desc" />
+            <label for="desc">Descending</label>
+
+            <label for="refresh">Refresh time</label>
+            <input name="refresh" type="number" id="refresh" value="1" />
         </form>
-        <ul id='messages'>
-        </ul>
-        -->
+
         <turbo-frame id="processes">
             {% include '_processes.html' %}
         </turbo-frame>
-        <script>
-            //var ws = new WebSocket("ws://localhost:8000/ws");
-            //hotwiredTurbo.connectStreamSource(ws);
-            /*
-            ws.onmessage = function(event) {
-                var messages = document.getElementById('messages')
-                var message = document.createElement('li')
-                var content = document.createTextNode(event.data)
-                message.appendChild(content)
-                messages.appendChild(message)
-            };
-
-            function sendMessage(event) {
-                var input = document.getElementById("messageText")
-                ws.send(input.value)
-                input.value = ''
-                event.preventDefault()
-            }
-            */
-        </script>
     </body>
 </html>

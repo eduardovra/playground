@@ -1,0 +1,24 @@
+<p>
+    Server time: {{ server_time }}
+</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>PID</th>
+            <th>Name</th>
+            <th>Status</th>
+            <th>CPU %</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for p in processes %}
+            <tr>
+                <td>{{ p.pid }}</td>
+                <td>{{ p.name() }}</td>
+                <td>{{ p.status() }}</td>
+                <td>{{ p.cpu_percent() }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>

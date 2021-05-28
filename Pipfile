@@ -7,6 +7,7 @@ name = "pypi"
 uvicorn = "*"
 fastapi = "*"
 jinja2 = "*"
+python-multipart = "*"
 
 [dev-packages]
 mypy = "*"

@@ -1,4 +1,4 @@
-# Implemented query_string support
+# Added form post support
 
 import asyncio
 from http import HTTPStatus
@@ -7,43 +7,55 @@ from urllib.parse import urlparse
 from main import app
 
 
-async def build_scope(
-    reader: asyncio.StreamReader, writer: asyncio.StreamWriter
-) -> dict:
-    request_line = await reader.readline()
-    method, path, protocol = request_line.decode().rstrip().split(" ", 3)
+def build_scope(request_line: bytes) -> dict:
+    request = request_line.decode().rstrip()
+    print(request)
+
+    method, path, protocol = request.split(" ", 3)
     url = urlparse(path)
-    path = url.path
-    query_string = url.query.encode()
     __, http_version = protocol.split("/")
-
-    headers = []
-    while True:
-        header_line = await reader.readline()
-        header = header_line.decode().rstrip()
-        if not header:
-            break
-        key, value = header.split(": ", 1)
-        headers.append((key.encode(), value.encode()))
-
-    sock = writer.get_extra_info("socket")
 
     return {
         "type": "http",
         "http_version": http_version,
         "method": method,
         "scheme": "http",
-        "path": path,
-        "query_string": query_string,
-        "headers": [],
-        "client": sock.getpeername(),
-        "server": sock.getsockname(),
+        "path": url.path,
+        "query_string": url.query.encode(),
     }
 
 
+async def read_headers(reader: asyncio.StreamReader) -> dict[str, str]:
+    headers = {}
+
+    while True:
+        header_line = await reader.readline()
+        header = header_line.decode().rstrip().lower()
+        if not header:
+            break
+        key, value = header.split(": ", 1)
+        headers[key] = value
+
+    return headers
+
+
 async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-    async def receive():
-        pass
+    request_line = await reader.readline()
+    # Check if connection was closed by the client
+    if request_line == b"" or reader.at_eof():
+        return
+
+    scope = build_scope(request_line)
+    raw_headers = await read_headers(reader)
+    content_length = int(raw_headers.get("content-length", 0))
+    scope["headers"] = [(k.encode(), v.encode()) for k, v in raw_headers.items()]
+
+    async def receive() -> dict:
+        return {
+            "type": "http.request",
+            "body": await reader.read(content_length),
+            "more_body": False,
+        }
 
     async def send(data):
         if data["type"] == "http.response.start":
@@ -63,9 +75,8 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
             writer.writelines([data["body"], "\r\n".encode()])
             await writer.drain()
         else:
-            raise Exception("Not implemented")
+            raise Exception(f"Type not implemented {data['type']}")
 
-    scope = await build_scope(reader, writer)
     await app(scope, receive, send)
 
     writer.close()
@@ -78,4 +89,5 @@ async def main():
 
 
 if __name__ == "__main__":
+    print("Listening on http://127.0.0.1:8000")
     asyncio.run(main())

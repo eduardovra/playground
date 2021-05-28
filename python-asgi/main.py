@@ -6,10 +6,10 @@ from fastapi.requests import Request
 app = FastAPI()
 
 
-@app.get("/", response_class=HTMLResponse)
-async def get(request: Request):
+@app.get("/")
+async def get(wsgi="Flask", asgi="FastAPI"):
     return HTMLResponse(
-        """
+        f"""
         <!DOCTYPE html>
         <html>
             <head>
@@ -17,6 +17,10 @@ async def get(request: Request):
             </head>
             <body>
                 <h1>Hello world</h1>
+                <ul>
+                    <li>wsgi={wsgi}</li>
+                    <li>asgi={asgi}</li>
+                </ul>
             </body>
         </html>
     """

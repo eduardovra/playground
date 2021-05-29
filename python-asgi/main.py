@@ -1,5 +1,7 @@
-from fastapi import FastAPI, Form
-from fastapi.responses import HTMLResponse
+# from fastapi import FastAPI, Form
+# from fastapi.responses import HTMLResponse
+from fakeapi import FastAPI, Form
+from fakeapi.responses import HTMLResponse
 
 
 app = FastAPI()

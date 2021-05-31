@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 from urllib.parse import parse_qs
 
 from .responses import HTMLResponse
@@ -10,6 +10,14 @@ class Route:
     path: str
     allowed_methods: list
     func: Callable
+
+    def match(self, path: str, method: str) -> bool:
+        if path == self.path:
+            if method in self.allowed_methods:
+                return True
+            raise Exception(f"Method {method} not allowed for {path}")
+
+        return False
 
 
 class FastAPI:
@@ -27,43 +35,41 @@ class FastAPI:
         req_headers = {k.decode().lower(): v.decode() for k, v in scope["headers"]}
 
         # Fetch body
-        resp_body = b""
         if req_headers.get("content-length", 0):
             event = await receive()
-            resp_body += event["body"]
+            resp_body = event["body"]
             more_body = event.get("more_body", False)
             while more_body:
                 event = await receive()
                 resp_body += event["body"]
                 more_body = event.get("more_body", False)
 
+            # Form post with url encoded format
             if req_headers.get("content-type") == "application/x-www-form-urlencoded":
                 qs = parse_qs(resp_body.decode())
-                kwargs = {k: v[0] for k, v in qs.items() if v}
+                kwargs.update({k: v[0] for k, v in qs.items() if v})
 
         # Find a matching route
-        for route in self.routes:
-            if route.path == scope["path"]:
-                if scope["method"] not in route.allowed_methods:
-                    raise Exception(
-                        f"Method {scope['method']} not allowed for {scope['path']}"
-                    )
+        route = self.find_matching_route(scope["path"], scope["method"])
+        if route:
+            # Call user-defined handling function
+            response = await route.func(**kwargs)
 
-                # Call handling function
-                response = await route.func(**kwargs)
-
-                # Send response back to ASGI server
-                # Header first
-                headers = self.build_resp_header(response)
-                await send(headers)
-                # Then the body
-                body = self.build_resp_body(response)
-                await send(body)
-
-                return
-        else:
-            headers = self.build_resp_header(HTMLResponse("Not found", 404))
+            # Send response back to ASGI server
+            headers = self.build_resp_header(response)
             await send(headers)
+            body = self.build_resp_body(response)
+            await send(body)
+        else:
+            headers = self.build_resp_header(HTMLResponse("Not Found", 404))
+            await send(headers)
+
+    def find_matching_route(self, path: str, method: str) -> Optional[Route]:
+        for route in self.routes:
+            if route.match(path, method):
+                return route
+
+        return None
 
     def build_resp_header(self, response: HTMLResponse) -> dict:
         return {
@@ -79,6 +85,8 @@ class FastAPI:
         return {"type": "http.response.body", "body": response.body.encode()}
 
     def route(self, path: str, methods: list[str]):
+        """Route decorator"""
+
         def wrapped_route(func: Callable):
             self.routes.append(Route(path, methods, func))
             return func

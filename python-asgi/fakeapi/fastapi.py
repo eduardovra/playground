@@ -11,13 +11,22 @@ class Route:
     allowed_methods: list
     func: Callable
 
-    def match(self, path: str, method: str) -> bool:
-        if path == self.path:
-            if method in self.allowed_methods:
-                return True
+    def match(self, path: str, method: str) -> Optional[dict]:
+        matching = {}
+
+        segments = zip(self.path.split("/"), path.split("/"))
+        for seg_route, seg_path in segments:
+            if seg_route == seg_path:
+                continue
+            elif seg_route and seg_route[0] == "{" and seg_route[-1] == "}":
+                matching[seg_route[1:-1]] = seg_path
+            else:
+                return None
+
+        if method not in self.allowed_methods:
             raise Exception(f"Method {method} not allowed for {path}")
 
-        return False
+        return matching
 
 
 class FastAPI:
@@ -50,10 +59,12 @@ class FastAPI:
                 kwargs.update({k: v[0] for k, v in qs.items() if v})
 
         # Find a matching route
-        route = self.find_matching_route(scope["path"], scope["method"])
-        if route:
+        func, path_parameters = self.find_matching_route(scope["path"], scope["method"])
+        if func and path_parameters:
+            # Path parameters
+            kwargs.update(path_parameters)
             # Call user-defined handling function
-            response = await route.func(**kwargs)
+            response = await func(**kwargs)
 
             # Send response back to ASGI server
             headers = self.build_resp_header(response)
@@ -61,15 +72,21 @@ class FastAPI:
             body = self.build_resp_body(response)
             await send(body)
         else:
-            headers = self.build_resp_header(HTMLResponse("Not Found", 404))
+            response = HTMLResponse("Not Found", 404)
+            headers = self.build_resp_header(response)
             await send(headers)
+            body = self.build_resp_body(response)
+            await send(body)
 
-    def find_matching_route(self, path: str, method: str) -> Optional[Route]:
+    def find_matching_route(
+        self, path: str, method: str
+    ) -> tuple[Optional[Callable], Optional[dict]]:
         for route in self.routes:
-            if route.match(path, method):
-                return route
+            path_parameters = route.match(path, method)
+            if isinstance(path_parameters, dict):
+                return route.func, path_parameters
 
-        return None
+        return None, None
 
     def build_resp_header(self, response: HTMLResponse) -> dict:
         return {
@@ -92,6 +109,14 @@ class FastAPI:
             return func
 
         return wrapped_route
+
+    def get(self, path: str) -> Callable:
+        """GET decorator"""
+        return self.route(path, methods=["GET"])
+
+    def post(self, path: str) -> Callable:
+        """POST decorator"""
+        return self.route(path, methods=["POST"])
 
 
 class Form:

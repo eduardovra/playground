@@ -61,3 +61,16 @@ async def query_string(required: str, optional: int = 5):
         </html>
     """
     )
+
+
+@app.get("/path-parameter/{item_id}")
+async def path_parameter(item_id: int):
+    return HTMLResponse(
+        f"""
+        <!DOCTYPE html>
+        <html>
+            <head><title>Path parameter</title></head>
+            <body><p>item_id: {item_id}</p></body>
+        </html>
+    """
+    )

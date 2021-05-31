@@ -1,5 +1,6 @@
 # from fastapi import FastAPI, Form
 # from fastapi.responses import HTMLResponse
+
 from fakeapi import FastAPI, Form
 from fakeapi.responses import HTMLResponse
 
@@ -7,10 +8,10 @@ from fakeapi.responses import HTMLResponse
 app = FastAPI()
 
 
-@app.get("/")
+@app.route("/", methods=["GET"])
 async def get():
     return HTMLResponse(
-        f"""
+        """
         <!DOCTYPE html>
         <html>
             <head>
@@ -29,7 +30,7 @@ async def get():
     )
 
 
-@app.post("/post")
+@app.route("/post", methods=["POST"])
 async def post(favorite: str = Form(...)):
     return HTMLResponse(
         f"""
@@ -40,6 +41,22 @@ async def post(favorite: str = Form(...)):
             </head>
             <body>
                 <h1>Your favorite framework is {favorite}</h1>
+            </body>
+        </html>
+    """
+    )
+
+
+@app.route("/query-string", methods=["GET"])
+async def query_string(required: str, optional: int = 5):
+    return HTMLResponse(
+        f"""
+        <!DOCTYPE html>
+        <html>
+            <head><title>Query string</title></head>
+            <body>
+                <p>required: {required}</p>
+                <p>optional: {optional}</p>
             </body>
         </html>
     """

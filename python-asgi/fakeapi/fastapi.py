@@ -17,11 +17,16 @@ class FastAPI:
         self.routes: list[Route] = []
 
     async def __call__(self, scope, receive, send) -> None:
+        # Parse query string
+        qs = parse_qs(scope["query_string"].decode())
+        kwargs = {}
+        for k, v in qs.items():
+            kwargs[k] = v[0] if len(v) == 1 else v
+
         # Parse headers
         req_headers = {k.decode().lower(): v.decode() for k, v in scope["headers"]}
 
         # Fetch body
-        kwargs = {}
         resp_body = b""
         if req_headers.get("content-length", 0):
             event = await receive()
@@ -57,14 +62,15 @@ class FastAPI:
 
                 return
         else:
-            raise Exception(f"No route was found for path {scope['path']}")
+            headers = self.build_resp_header(HTMLResponse("Not found", 404))
+            await send(headers)
 
     def build_resp_header(self, response: HTMLResponse) -> dict:
         return {
             "type": "http.response.start",
-            "status": 200,
+            "status": response.status_code,
             "headers": [
-                (b"Content-Type", b"text/html; charset=UTF-8"),
+                (b"Content-Type", response.media_type.encode()),
                 (b"Content-Length", f"{len(response.body.encode())}".encode()),
             ],
         }
@@ -72,19 +78,12 @@ class FastAPI:
     def build_resp_body(self, response: HTMLResponse) -> dict:
         return {"type": "http.response.body", "body": response.body.encode()}
 
-    def get(self, path: str):
-        def wrapped_get(func: Callable):
-            self.routes.append(Route(path, ["GET"], func))
+    def route(self, path: str, methods: list[str]):
+        def wrapped_route(func: Callable):
+            self.routes.append(Route(path, methods, func))
             return func
 
-        return wrapped_get
-
-    def post(self, path: str):
-        def decorator_post(func: Callable):
-            self.routes.append(Route(path, ["POST"], func))
-            return func
-
-        return decorator_post
+        return wrapped_route
 
 
 class Form:

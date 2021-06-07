@@ -25,5 +25,5 @@ class FastAPI:
 
 
 class Form:
-    def __init__(self, anything: Any) -> None:
-        pass
+    def __init__(self, default: Any) -> None:
+        self.required = default is Ellipsis

@@ -4,7 +4,6 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-uvicorn = "*"
 fastapi = "*"
 jinja2 = "*"
 python-multipart = "*"
@@ -15,3 +14,6 @@ black = "==21.5b1"
 
 [requires]
 python_version = "3.9"
+
+[packages.uvicorn]
+extras = [ "standard",]
